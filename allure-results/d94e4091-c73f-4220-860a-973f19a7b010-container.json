@@ -1,0 +1,1 @@
+{"uuid": "7433c6ad-8859-4d4d-898b-73886c63d4a8", "children": ["04e84a60-f4de-4b3e-8a71-1e5305bfe6bd"], "befores": [{"name": "auth_token", "status": "passed", "steps": [{"name": "Выполнить логин для получения токена", "status": "passed", "start": 1780990977655, "stop": 1780990977979}], "start": 1780990977655, "stop": 1780990977982}], "start": 1780990977655, "stop": 1780990978243}
