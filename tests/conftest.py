@@ -1,36 +1,52 @@
 import allure
 import pytest
-import requests
+from helpers.user_helper import (
+    generate_user_data,
+    register_user,
+    login_user,
+    logout_user
+)
 from data.urls import Endpoints
-from helpers.user_helper import generate_user_data
+import requests
 
 @pytest.fixture
 def user_data():
-    """Генерирует данные для нового пользователя"""
     return generate_user_data()
 
 @pytest.fixture
 def registered_user():
-    """Создаёт и возвращает зарегистрированного пользователя, удаляет после теста"""
     user = generate_user_data()
-
     with allure.step("Зарегистрировать пользователя"):
-        response = requests.post(Endpoints.REGISTER, json=user)
-        assert response.status_code == 200, f"Регистрация не удалась: {response.status_code}"
-
-    yield user  # Передаём данные в тест
-
-    # Очистка после теста 
-    with allure.step("Удалить тестового пользователя"):
-        
-        pass
+        register_user(user)
+    yield user
+    with allure.step("Выполнить logout пользователя"):
+        try:
+            token = login_user(user)
+            logout_user(token)
+        except Exception as e:
+            print(f"Предупреждение: не удалось выполнить logout: {e}")
 
 @pytest.fixture
 def auth_token(registered_user):
-    """Возвращает токен авторизации для зарегистрированного пользователя"""
-    with allure.step("Выполнить логин для получения токена"):
-        login_response = requests.post(Endpoints.LOGIN, json={
-            "email": registered_user["email"],
-            "password": registered_user["password"]
-        })
-    return login_response.json().get("accessToken")
+    with allure.step("Получить токен авторизации"):
+        return login_user(registered_user)
+
+@pytest.fixture
+def cleanup_user():
+    users_to_cleanup = []
+
+    def _register_user_for_cleanup(user_data):
+        users_to_cleanup.append(user_data)
+
+    yield _register_user_for_cleanup
+
+    for user in users_to_cleanup:
+        try:
+            token = login_user(user)
+            logout_user(token)
+            headers = {"Authorization": token}
+            response = requests.delete(Endpoints.DELETE_USER, headers=headers)
+            if response.status_code not in (200, 204, 404):
+                print(f"Предупреждение: не удалось удалить пользователя {user.get('email', 'unknown')}: статус {response.status_code}")
+        except Exception as e:
+            print(f"Ошибка при очистке пользователя {user.get('email', 'unknown')}: {e}")
